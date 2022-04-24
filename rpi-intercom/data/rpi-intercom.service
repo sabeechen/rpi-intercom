@@ -1,0 +1,15 @@
+[Unit]
+Description = RPi Mumble Intercom Client
+Requires = systemd-user-sessions.service network.target sound.target
+After = multi-user.target
+
+[Service]
+User = rpi-intercom
+Group = rpi-intercom
+Type = simple
+ExecStart = python -u -m rpi-intercom --config {config_path}
+Restart = always
+RestartSec = 5
+
+[Install]
+WantedBy = multi-user.target

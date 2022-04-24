@@ -1,0 +1,19 @@
+# Everything excpet server is optional. Can be hostname, ipv4, ipv6, etc 
+server: mumbleserver.local
+port: 64738
+nickname: my first intercom
+password: super_$ecret_password
+
+# If no channel is specified, the intercom just join the server root
+channel: rpi-intercom
+tokens:
+  - password1
+  - passwrod2
+pins:
+  # Any of the GPIO's can be used here, these are just examples
+  GPIO14: transmitting # LED on GPIO14 lights up when transmitting from the microphone
+  GPIO18: connected # LED on GPIO18 lights up when connected to mumble
+  GPIO23: deafened # LED on GPIO23 lights up when defened
+  GPIO7: receiving # LED on GPIO07 lights up getting incmoing audio
+  GPIO16: deafen # Holding a button on GPIO23 stops silences speakers 
+  GPIO12: transmit # Holding a button on GPIO14 transmits microphone audio
