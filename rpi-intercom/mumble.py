@@ -71,7 +71,10 @@ class Mumble():
 
     def transmit(self, chunk):
         try:
-            self._transmit_queue.put(chunk, block=False)
+            for sample in chunk:
+                if sample > 0:
+                    self._transmit_queue.put(chunk, block=False)
+                    break
         except:
             pass
 
