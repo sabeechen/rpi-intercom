@@ -1,0 +1,5 @@
+server: media.home
+nickname: test-intercom
+channel: testing
+tokens:
+  - excellent_password
