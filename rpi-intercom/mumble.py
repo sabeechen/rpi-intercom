@@ -3,7 +3,7 @@ import pymumble_py3
 import time
 from threading import Thread
 from pymumble_py3.channels import Channel
-from pymumble_py3.callbacks import PYMUMBLE_CLBK_SOUNDRECEIVED, PYMUMBLE_CLBK_CONNECTED, PYMUMBLE_CLBK_DISCONNECTED
+from pymumble_py3.callbacks import PYMUMBLE_CLBK_SOUNDRECEIVED, PYMUMBLE_CLBK_CONNECTED, PYMUMBLE_CLBK_DISCONNECTED, PYMUMBLE_CLBK_PERMISSIONDENIED
 from pymumble_py3.errors import UnknownChannelError
 from .config import Config
 from .control import Control
@@ -23,27 +23,14 @@ class Mumble():
         self._config = config
         self._control = control
         
-        self._mumble = pymumble_py3.Mumble(
-            self._config.server,
-            self._config.nickname,
-            password=self._config.password,
-            port=self._config.port,
-            reconnect=True,
-            certfile=self._config.cert_file,
-            keyfile=self._config.key_file,
-            tokens=self._config.tokens)
-
-        # Bind to some server events so we can be notified and react accordingly.
-        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_SOUNDRECEIVED, self._onSound)
-        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_CONNECTED, self._onConnect)
-        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_DISCONNECTED, self._onDisconnect)
-        self._mumble.set_receive_sound(True)
+        self._mumble = None
 
         # Transmitting audio over the network is handled in a seperate thread to avoid 
         # locking up the recieving audio buffer form the local microphone.
         self._transmit_queue = queue.Queue(maxsize=5)
-        self._transmit_thread = Thread(target=self._transmit_loop, name="Transmit Thread", daemon=True)
+        self._transmit_thread = None
         self._sound_callback = None
+        self._stopping = False
 
 
     def _onConnect(self):
@@ -79,10 +66,10 @@ class Mumble():
             pass
 
     def _transmit_loop(self):
-        while(True):
+        while(not self._stopping):
             try:
-                chunk = self._transmit_queue.get(block=True)
-                if self._connected and self._control.transmitting:
+                chunk = self._transmit_queue.get(block=True, timeout=0.5)
+                if self._connected and self._control.transmitting and self._mumble is not None:
                     output = self._mumble.sound_output
                     backlog = output.get_buffer_size()
                     if backlog > self._config._send_buffer_latency:
@@ -96,16 +83,43 @@ class Mumble():
             except IndexError:
                 # there wasn't any audio in the trasmit queue.
                 time.sleep(0.005)
+            except Exception as e:
+                if isinstance(e, queue.Empty):
+                    # Such pythonic, so clean. wow.
+                    continue
+                print(e)
 
     def start(self):
         '''
         Connects to the mumble server and starst sending/recieving audio.  Also retrys connecting to mumble if a disconnect happens.
         '''
+        self._mumble = pymumble_py3.Mumble(
+            self._config.server,
+            self._config.nickname,
+            password=self._config.password,
+            port=self._config.port,
+            reconnect=True,
+            certfile=self._config.cert_file,
+            keyfile=self._config.key_file,
+            tokens=self._config.tokens)
+        # Bind to some server events so we can be notified and react accordingly.
+        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_SOUNDRECEIVED, self._onSound)
+        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_CONNECTED, self._onConnect)
+        self._mumble.callbacks.set_callback(PYMUMBLE_CLBK_DISCONNECTED, self._onDisconnect)
+        self._mumble.set_receive_sound(True)
         self._mumble.start()
+        self._stopping = False
+        self._transmit_thread = Thread(target=self._transmit_loop, name="Transmit Thread", daemon=True)
         self._transmit_thread.start()
 
     def stop(self):
         '''
         Disconnects from the mumble server and stops processing audio.
         '''
-        self._mumble.stop()
+        if self._mumble is not None:
+            self._mumble.stop()
+            self._mumble = None
+        self._connected = False
+        self._stopping = True
+        if self._transmit_thread is not None:        
+            self._transmit_thread.join()

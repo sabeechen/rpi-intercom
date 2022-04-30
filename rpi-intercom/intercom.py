@@ -1,5 +1,6 @@
 import signal, os
 from threading import Event
+from time import sleep
 from .control import Control
 from .config import Config
 from .sound  import Sound
@@ -42,10 +43,19 @@ class Intercom:
 
     def run(self):
         try:
+            print("Starting up")
             self.start()
             signal.signal(signal.SIGQUIT, self._signal_handler)
             signal.signal(signal.SIGTERM, self._signal_handler)
-            self._wait_forever.wait()
+            if self._config.restart_seconds > 0:
+                print(f"I will shut down in {self._config.restart_seconds} seconds")
+                self._wait_forever.wait(timeout=self._config.restart_seconds)
+            else:
+                self._wait_forever.wait()
+        except TimeoutError:
+            # normal, just restart like normal
+            print("Shutting down due to the configured timeout")
+            pass
         except KeyboardInterrupt:
             pass
         finally:
