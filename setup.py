@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name='rpi-intercom',
     packages=find_packages(include=['rpi-intercom']),
-    version='0.0.1',
+    version='0.0.2',
     description='Intercom library for a raspberrypi',
     long_description=long_description,
     long_description_content_type="text/markdown",
