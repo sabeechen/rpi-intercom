@@ -12,7 +12,7 @@ setup(
         'Programming Language :: Python :: 3.9',
     ],
     packages=find_packages(include=['rpi-intercom']),
-    ackage_data={'rpi-intercom': ['data/rpi-intercom.service']},
+    package_data={'rpi-intercom': ['data/rpi-intercom.service']},
     version='0.0.2',
     description='Intercom library for a raspberrypi',
     long_description=long_description,
