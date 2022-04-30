@@ -54,7 +54,7 @@ class Mumble():
 
     def _onSound(self, user, soundchunk):
         if self._sound_callback:
-            self._sound_callback(soundchunk.pcm)
+            self._sound_callback(user, soundchunk.pcm)
 
     def transmit(self, chunk):
         try:
