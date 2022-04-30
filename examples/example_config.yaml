@@ -1,14 +1,18 @@
-# Everything excpet server is optional. Can be hostname, ipv4, ipv6, etc 
+# Can be hostname, ipv4, ipv6, etc 
 server: mumbleserver.local
+
+# Everything below here is optional, but YOU might need it 
 port: 64738
 nickname: my first intercom
 password: super_$ecret_password
 
-# If no channel is specified, the intercom just join the server root
+# If no channel is specified, the intercom just joins the server root
 channel: rpi-intercom
+
+# Does anyone know why mumble calls a channel password a "token"?
 tokens:
   - password1
-  - passwrod2
+  - password2
 pins:
   # Any of the GPIO's can be used here, these are just examples
   GPIO14: transmitting # LED on GPIO14 lights up when transmitting from the microphone
