@@ -1,1 +1,3 @@
 rpi-intercom/__pycache__/*
+rpi_intercom.egg-info/
+dist/
