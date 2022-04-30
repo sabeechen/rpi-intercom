@@ -5,6 +5,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='rpi-intercom',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.9',
+    ],
     packages=find_packages(include=['rpi-intercom']),
     ackage_data={'rpi-intercom': ['data/rpi-intercom.service']},
     version='0.0.2',
