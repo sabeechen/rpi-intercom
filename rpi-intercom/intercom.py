@@ -5,6 +5,7 @@ from .control import Control
 from .config import Config
 from .sound  import Sound
 from .mumble import Mumble
+from .devices import Devices
 from .echotest import EchoTest
 
 
@@ -23,9 +24,10 @@ class Intercom:
         self._config = config
         self._wait_forever = Event()
         self._control = Control(config)
+        self._devices = Devices(self._config)
         self._mumble = Mumble(self._control, config)
         #self.mumble = EchoTest()
-        self._sound = Sound(self._mumble, self._control, config)
+        self._sound = Sound(self._devices, self._mumble, self._control, config)
 
     @property
     def controller(self):
@@ -33,12 +35,14 @@ class Intercom:
 
     def start(self):
         self._control.start()
+        self._devices.start()
         self._mumble.start()
         self._sound.start()
 
     def stop(self):
         self._mumble.stop()
         self._sound.stop()
+        self._devices.stop()
         self._control.stop()
 
     def run(self):

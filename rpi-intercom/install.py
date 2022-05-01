@@ -57,30 +57,13 @@ class InstallService:
 
         print("This script will:")
         print(" - Create a user named 'rpi-intercom' with limited permissions to run the intercom service")
-        print(" - Apt-get dependencies needed for the intercom service")
-        print(" - Install the intercom service")
-        print(" - Configure the intercom service to start at boot")
-        print(" - Configure the default sound device according to your preference")
+        print(" - Install the rpi-intercom service")
+        print(" - Configure the service to start at boot")
         print("Do you want to continue [yes/no]?")
         response = input()
         if not response.lower().startswith("y"):
             print("OK!")
             raise FailedInstall("Install cancelled by user")
-
-        print("Installing python3-audio")
-        self._run_process(['apt-get', 'install', '-y', 'python3-pyaudio'])
-
-        print()
-        devices = self._run_process(["cat", "/proc/asound/cards"])
-        print("Sound devices: ")
-        print(devices.stdout.decode("utf-8"))
-        print("The intercom service will need to know which sound device to use.  Listed above is the output of /proc/asound/cards.  Enter the index of the card you want to use and I'll overrwite /etc/asound.conf specifying that as the default, or leave this option blank to leave the default sound device unchanged.")
-        response = input().strip()
-        if len(response) != 0:
-            index = int(response)
-            print("Overwriting /etc/asound.conf")
-            with open("/etc/asound.conf", "w") as dest:
-                dest.write(ASOUND_CONFIGURATION.replace("{index}", str(index)))
         print()
         user_created = False
         for user in pwd.getpwall():

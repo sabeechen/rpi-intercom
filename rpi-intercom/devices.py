@@ -1,46 +1,121 @@
-import os
-import sys
-import pyaudio
-from contextlib import contextmanager
-from pprint import pprint
+import math
+import alsaaudio as alsa
+from .config import Config, DEFAULTS, Options
+from typing import Dict, List
 
-@contextmanager
-def ignore_std_error():
-    '''
-    Creates a context where std error message are ignored. This is used to 
-    prevent pyaudio from spewing warning messages about finding audio devices when it first 
-    starts
-    '''
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    old_stderr = os.dup(2)
-    sys.stderr.flush()
-    os.dup2(devnull, 2)
-    os.close(devnull)
-    try:
-        yield
-    finally:
-        os.dup2(old_stderr, 2)
-        os.close(old_stderr)
+
+FORMAT = alsa.PCM_FORMAT_S16_LE  # pymumble soundchunk.pcm is 16 bits little endian
+CHANNELS = 1  # No need for stereo in an intercom
+RATE = 48000  # pymumble soundchunk.pcm is 48000Hz
+PCM_STRINGS = ['sysdefault:CARD=', 'default:CARD=']
 
 class Devices():
-    def __init__(self):
-        pass
+    def __init__(self, config: Config):
+        self._config = config
+        self._speaker: alsa.PCM = None
+        self._microphone: alsa.PCM = None
+        self._devices:Dict[int, List[str]] = {}
+        for i in alsa.card_indexes():
+            (name, longname) = alsa.card_name(i)
+            self._devices[i] = [name, str(i), longname]
+        self._input_pcms: List[str] = alsa.pcms(alsa.PCM_CAPTURE)
+        self._output_pcms: List[str] = alsa.pcms(alsa.PCM_PLAYBACK)
+
+        # determine chunk size
+        self._chunk_size = int(math.pow(2, int(math.log2(self._config.chunk_size))))
+        if self._chunk_size < 128:
+            self._chunk_size = 128
 
     def list(self):
-        audio = None
-        try:
-            with ignore_std_error():
-                audio  = pyaudio.PyAudio()
-            devices = audio.get_device_count()
-            for x in range(0, devices):
-                info = audio.get_device_info_by_index(x)
-                print(f"{info['index']}: '{info['name']}'")
-                pprint(info, indent=4)
-                #pprint.pprint(audio.get_default_host_api_info())
+        print("Identified speaker devices:")
+        print("    default")
+        for device in self._output_pcms:
+            for identifier in PCM_STRINGS:
+                if device.startswith(identifier):
+                    print("    " + device.replace(identifier, ""))
+        print()
+        print("Identified microphone devices:")
+        print("    default")
+        for device in self._input_pcms:
+            for identifier in PCM_STRINGS:
+                if device.startswith(identifier):
+                    print("    " + device.replace(identifier, ""))
 
-            print(F"Count: {audio.get_host_api_count()}")
-            pprint(audio.get_host_api_info_by_index(1))
-            pprint(audio.get_default_input_device_info())
-        finally:
-            if audio is not None:
-                audio.terminate()
+        print()
+        print("Only recommended devices are show here.  To see the list of ALL input/output devices ALSA provides, please run:")
+        print("    python -m rpi-intercom list-devices-raw")
+
+
+    def list_raw(self):
+        print("Identified ouput devices:")
+        print("    default")
+        for device in self._output_pcms:
+            print("    " + device)
+        print()
+        print("Identified input devices:")
+        print("    default")
+        for device in self._input_pcms:
+            print("    " + device)
+
+        print()
+        print("Please note that not all available devices will work with this library, as they must support 16bit 48kHz mono audio input/output.  Its recommended to stick with the devices starting with 'sysdefault' or 'default' where ALSA does the necessary re-sampling, otherwise the device may distort the audio")
+
+    def start(self):
+        print("Configuring sound devices")
+        print(f"Using a device chunk size of {self._chunk_size} bytes")
+        if isinstance(self._config.microphone, int) or len(self._config.microphone) > 0:
+            name = self._validate_device(self._config.microphone, self._input_pcms)
+            print(f"Using microphone device '{name}' for audio input")
+            self._microphone = alsa.PCM(type=alsa.PCM_CAPTURE, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
+        
+        if isinstance(self._config.speaker, int) or len(self._config.speaker) > 0:
+            name = self._validate_device(self._config.speaker, self._output_pcms)
+            print(f"Using speaker device '{name}' for audio output")
+            self._speaker = alsa.PCM(type=alsa.PCM_PLAYBACK, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
+
+    def stop(self):
+        # TODO: these seem to hang.  figure out why
+        #if self._speaker is not None:
+        #    self._speaker.close()
+        #if self._microphone is not None:
+        #    self._microphone.close()
+        self._microphone = None
+        self._speaker = None
+
+    @property
+    def microphone(self):
+        return self._microphone
+
+    @property
+    def speaker(self):
+        return self._speaker
+
+    @property
+    def chunk_size(self):
+        return self._chunk_size
+
+    @property
+    def frame_length(self):
+        """The size in bytes of a frame given the configured chunk_size"""
+        #16bit mono PCM is 2 bytes per frame
+        return self.chunk_size * 2
+
+    def _validate_device(self, name, device_list):
+        name = str(name)
+        if name in device_list:
+            # easiest case, a fully named pcm device
+            return name
+
+        if f"sysdefault:CARD={name}" in device_list:
+            return f"sysdefault:CARD={name}"
+        if f"default:CARD={name}" in device_list:
+            return f"default:CARD={name}"
+
+        for index in self._devices:
+            if name in self._devices[index]:
+                return f"sysdefault:{index}"
+        print(f"'{name}' does not identify a valid sound device.  You can use 'list-devices' to see what devices are available on your machine. Eg:")
+        print("    ptyhon -m rpi-intercom list-devices")
+
+        # TODO: this exception should be more descriptive
+        raise Exception()
