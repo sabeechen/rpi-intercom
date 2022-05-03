@@ -29,7 +29,7 @@ class Sound():
 
     def _microphone_loop(self):
         while(self._running):
-            _length, chunk = self._devices.microphone.read()
+            _length, chunk = self._devices.microphone_read()
             self._mumble.transmit(chunk)
 
 
@@ -45,7 +45,7 @@ class Sound():
                     # silent audio data to the speaker.
                     self._control.recieving = False
                     chunk = bytes(bytearray(self._devices.frame_length))
-                    self._devices.speaker.write(chunk)
+                    self._devices.speaker_write(chunk)
                 else:
                     mixed = toMix[0]
                     # Only go through the overhead of mixing audio if 
@@ -53,12 +53,12 @@ class Sound():
                     if len(toMix) > 1:
                         mixed = self._mix(toMix)
                     self._control.recieving = True
-                    self._devices.speaker.write(mixed)
+                    self._devices.speaker_write(mixed)
             except Exception as e:
                 print(e)
                 self._control.recieving = False
                 chunk = bytes(bytearray(self._devices.frame_length))
-                self._devices.speaker.write(chunk)
+                self._devices.speaker_write(chunk)
             
 
     def _mix(self, sources: List[bytes]):

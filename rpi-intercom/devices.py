@@ -74,13 +74,55 @@ class Devices():
             self._speaker = alsa.PCM(type=alsa.PCM_PLAYBACK, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
 
     def stop(self):
-        # TODO: these seem to hang.  figure out why
-        #if self._speaker is not None:
-        #    self._speaker.close()
-        #if self._microphone is not None:
-        #    self._microphone.close()
+        if self._speaker is not None:
+            self._speaker.close()
+            print("Closed speaker")
+        if self._microphone is not None:
+            self._microphone.pause()
+            self._microphone.close()
+            print("Closed microphone")
         self._microphone = None
         self._speaker = None
+
+    def speaker_write(self, data) -> None:
+        if self._speaker is None:
+            return
+        try:
+            self._speaker.write(data)
+        except Exception as e:
+            print("Speaker reported an exception:")
+            print(e)
+             # Restart the speaker
+            try:
+                self._speaker.close()
+            except:
+                # Just ignore if it can't close
+                pass
+            name = self._validate_device(self._config.speaker, self._output_pcms)
+            print(f"Using speaker device '{name}' for audio output")
+            self._speaker = alsa.PCM(type=alsa.PCM_PLAYBACK, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
+            self.speaker_write(data)
+
+    def microphone_read(self):
+        if self._microphone is None:
+            return
+        try:
+            return self._microphone.read()
+        except Exception as e:
+            print("Microphone reported an exception:")
+            print(e)
+
+            # Restart the microphone
+            try:
+                self._microphone.pause()
+                self._microphone.close()
+            except:
+                # Just ignore if it can't close
+                pass
+            name = self._validate_device(self._config.microphone, self._input_pcms)
+            print(f"Using microphone device '{name}' for audio input")
+            self._microphone = alsa.PCM(type=alsa.PCM_CAPTURE, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
+            return self.microphone_read()
 
     @property
     def microphone(self):
