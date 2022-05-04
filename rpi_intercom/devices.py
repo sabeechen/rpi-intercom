@@ -43,7 +43,7 @@ class Devices():
 
         print()
         print("Only recommended devices are show here.  To see the list of ALL input/output devices ALSA provides, please run:")
-        print("    python -m rpi-intercom list-devices-raw")
+        print("    python -m rpi_intercom list-devices-raw")
 
 
     def list_raw(self):
@@ -157,7 +157,7 @@ class Devices():
             if name in self._devices[index]:
                 return f"sysdefault:{index}"
         print(f"'{name}' does not identify a valid sound device.  You can use 'list-devices' to see what devices are available on your machine. Eg:")
-        print("    ptyhon -m rpi-intercom list-devices")
+        print("    python -m rpi_intercom list-devices")
 
         # TODO: this exception should be more descriptive
         raise Exception()

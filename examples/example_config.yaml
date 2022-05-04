@@ -7,7 +7,7 @@ nickname: my first intercom
 password: super_$ecret_password
 
 # If no channel is specified, the intercom just joins the server root
-channel: rpi-intercom
+channel: rpi_intercom
 
 # Does anyone know why mumble calls a channel password a "token"?
 tokens:

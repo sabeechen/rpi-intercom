@@ -14,7 +14,7 @@ After = multi-user.target
 User = rpi-intercom
 Group = rpi-intercom
 Type = simple
-ExecStart = python -u -m rpi-intercom --config {config_path}
+ExecStart = python -u -m rpi_intercom --config {config_path}
 Restart = always
 RestartSec = 5
 
@@ -51,9 +51,9 @@ class InstallService:
     def _run(self):
         print(__file__)
         if len(sys.argv) < 3 or not os.path.exists(sys.argv[2]):
-            raise FailedInstall("Please specify a valid path to a file to use for the intercom's configuration.  Example:\n    sudo python -m rpi-intercom /path/to/a/configuration/file.yaml")
+            raise FailedInstall("Please specify a valid path to a file to use for the intercom's configuration.  Example:\n    sudo python -m rpi_intercom /path/to/a/configuration/file.yaml")
         if os.getuid() != 0:
-            raise FailedInstall("Please run this script with sudo.  Example:\n    sudo python -m rpi-intercom /path/to/a/configuration/file.yaml")
+            raise FailedInstall("Please run this script with sudo.  Example:\n    sudo python -m rpi_intercom /path/to/a/configuration/file.yaml")
 
         print("This script will:")
         print(" - Create a user named 'rpi-intercom' with limited permissions to run the intercom service")
