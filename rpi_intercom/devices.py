@@ -89,7 +89,7 @@ class Devices():
             return
         try:
             self._speaker.write(data)
-        except Exception as e:
+        except (Exception, alsa.ALSAAudioError) as e:
             print("Speaker reported an exception:")
             print(e)
              # Restart the speaker
@@ -108,7 +108,7 @@ class Devices():
             return
         try:
             return self._microphone.read()
-        except Exception as e:
+        except (Exception, alsa.ALSAAudioError) as e:
             print("Microphone reported an exception:")
             print(e)
 
