@@ -1,6 +1,7 @@
 import math
 import alsaaudio as alsa
 from .config import Config, DEFAULTS, Options
+from .shutdown import Shutdown
 from typing import Dict, List
 
 
@@ -10,11 +11,12 @@ RATE = 48000  # pymumble soundchunk.pcm is 48000Hz
 PCM_STRINGS = ['sysdefault:CARD=', 'default:CARD=']
 
 class Devices():
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, shutdown: Shutdown):
         self._config = config
         self._speaker: alsa.PCM = None
         self._microphone: alsa.PCM = None
         self._devices:Dict[int, List[str]] = {}
+        self._shutdown = shutdown
         for i in alsa.card_indexes():
             (name, longname) = alsa.card_name(i)
             self._devices[i] = [name, str(i), longname]
@@ -85,44 +87,24 @@ class Devices():
         self._speaker = None
 
     def speaker_write(self, data) -> None:
-        if self._speaker is None:
+        if self._speaker is None or self._shutdown.shutting_down:
             return
         try:
             self._speaker.write(data)
         except (Exception, alsa.ALSAAudioError) as e:
             print("Speaker reported an exception:")
             print(e)
-             # Restart the speaker
-            try:
-                self._speaker.close()
-            except:
-                # Just ignore if it can't close
-                pass
-            name = self._validate_device(self._config.speaker, self._output_pcms)
-            print(f"Using speaker device '{name}' for audio output")
-            self._speaker = alsa.PCM(type=alsa.PCM_PLAYBACK, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
-            self.speaker_write(data)
+            self._shutdown.shutdown()
 
     def microphone_read(self):
-        if self._microphone is None:
-            return
+        if self._microphone is None or self._shutdown.shutting_down:
+            return None, None
         try:
             return self._microphone.read()
         except (Exception, alsa.ALSAAudioError) as e:
             print("Microphone reported an exception:")
             print(e)
-
-            # Restart the microphone
-            try:
-                self._microphone.pause()
-                self._microphone.close()
-            except:
-                # Just ignore if it can't close
-                pass
-            name = self._validate_device(self._config.microphone, self._input_pcms)
-            print(f"Using microphone device '{name}' for audio input")
-            self._microphone = alsa.PCM(type=alsa.PCM_CAPTURE, mode=alsa.PCM_NORMAL, channels=CHANNELS, rate=RATE, format=alsa.PCM_FORMAT_S16_LE, periodsize=self._chunk_size, device=name)
-            return self.microphone_read()
+            self._shutdown.shutdown()
 
     @property
     def microphone(self):

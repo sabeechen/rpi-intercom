@@ -1,4 +1,5 @@
 import signal, os
+import pkg_resources
 from threading import Event
 from time import sleep
 from .control import Control
@@ -7,6 +8,7 @@ from .sound  import Sound
 from .mumble import Mumble
 from .devices import Devices
 from .echotest import EchoTest
+from .shutdown import Shutdown
 
 
 class Intercom:
@@ -21,10 +23,11 @@ class Intercom:
     to start/stop playback, mute, or defen.
     '''
     def __init__(self, config: Config):
+        self._shutdown = Shutdown(config)
         self._config = config
         self._wait_forever = Event()
         self._control = Control(config)
-        self._devices = Devices(self._config)
+        self._devices = Devices(self._config, self._shutdown)
         self._mumble = Mumble(self._control, config)
         #self.mumble = EchoTest()
         self._sound = Sound(self._devices, self._mumble, self._control, config)
@@ -34,6 +37,7 @@ class Intercom:
         return self._control
 
     def start(self):
+        self._shutdown.start()
         self._control.start()
         self._devices.start()
         self._mumble.start()
@@ -47,24 +51,14 @@ class Intercom:
 
     def run(self):
         try:
-            print("Starting up")
+            print("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
             self.start()
-            signal.signal(signal.SIGQUIT, self._signal_handler)
-            signal.signal(signal.SIGTERM, self._signal_handler)
-            if self._config.restart_seconds > 0:
-                print(f"I will shut down in {self._config.restart_seconds} seconds")
-                self._wait_forever.wait(timeout=self._config.restart_seconds)
-            else:
-                self._wait_forever.wait()
-        except TimeoutError:
-            # normal, just restart like normal
-            print("Shutting down due to the configured timeout")
-            pass
+            signal.signal(signal.SIGQUIT, self._shutdown.shutdown)
+            signal.signal(signal.SIGTERM, self._shutdown.shutdown)
+            self._shutdown.wait_for_shutdown()
         except KeyboardInterrupt:
-            pass
+            print("Keyboard interupt")
+            self._shutdown.shutdown()
         finally:
             print("Shutting down")
             self.stop()
-
-    def _signal_handler(self, signum, frame):
-        self._wait_forever.set()

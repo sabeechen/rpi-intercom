@@ -1,4 +1,5 @@
 from threading import Lock, Thread
+from time import sleep
 from typing import Dict, List
 import queue
 from contextlib import contextmanager
@@ -28,7 +29,10 @@ class Sound():
     def _microphone_loop(self):
         while(self._running):
             _length, chunk = self._devices.microphone_read()
-            self._mumble.transmit(chunk)
+            if chunk is not None:
+                self._mumble.transmit(chunk)
+            else:
+                sleep(0.1)
 
 
     def _speaker_loop(self):
