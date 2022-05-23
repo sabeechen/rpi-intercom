@@ -3,7 +3,7 @@ import alsaaudio as alsa
 from .config import Config, DEFAULTS, Options
 from .shutdown import Shutdown
 from typing import Dict, List
-
+from datetime import datetime, timedelta
 
 FORMAT = alsa.PCM_FORMAT_S16_LE  # pymumble soundchunk.pcm is 16 bits little endian
 CHANNELS = 1  # No need for stereo in an intercom
@@ -12,6 +12,7 @@ PCM_STRINGS = ['sysdefault:CARD=', 'default:CARD=']
 
 class Devices():
     def __init__(self, config: Config, shutdown: Shutdown):
+        self._start = datetime.now()
         self._config = config
         self._speaker: alsa.PCM = None
         self._microphone: alsa.PCM = None
@@ -105,6 +106,7 @@ class Devices():
             print("Microphone reported an exception:")
             print(e)
             self._shutdown.shutdown()
+            return None, None
 
     @property
     def microphone(self):

@@ -117,7 +117,11 @@ class Mumble():
         Disconnects from the mumble server and stops processing audio.
         '''
         if self._mumble is not None:
-            self._mumble.stop()
+            try:
+                self._mumble.stop()
+            except:
+                # eat the error
+                pass
             self._mumble = None
         self._connected = False
         self._stopping = True
