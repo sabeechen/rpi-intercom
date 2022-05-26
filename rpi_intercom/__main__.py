@@ -15,4 +15,7 @@ if __name__ == '__main__':
     else:
         from .intercom import Intercom
         from .config import Config
-        asyncio.run(Intercom(Config.fromArgs()).run())
+        try:
+            asyncio.run(Intercom(Config.fromArgs()).run())
+        except KeyboardInterrupt as e:
+            pass
