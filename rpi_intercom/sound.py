@@ -1,3 +1,4 @@
+from pickle import TRUE
 from threading import Lock, Thread
 from time import sleep
 from typing import Dict, List
@@ -47,8 +48,7 @@ class Sound():
                     # There isn't any audio buffered from mumble, so just send
                     # silent audio data to the speaker.
                     self._control.recieving = False
-                    chunk = bytes(bytearray(self._devices.frame_length))
-                    self._devices.speaker_write(chunk)
+                    self._devices.speaker_write(np.zeros(self._devices.chunk_size))
                 else:
                     mixed = self._mix(toMix)
                     self._control.recieving = True
@@ -56,8 +56,7 @@ class Sound():
             except Exception as e:
                 print(e)
                 self._control.recieving = False
-                chunk = bytes(bytearray(self._devices.frame_length))
-                self._devices.speaker_write(chunk)
+                self._devices.speaker_write(np.zeros(self._devices.chunk_size))
             
 
     def _mix(self, sources: np.ndarray):
@@ -75,21 +74,17 @@ class Sound():
         for source in sources:
             # Then mix them together as described above
             current = current + source - (current * source)
-        # Convert back into 16bit PCM
-        current = (current * 32768).astype(self._audio_data_type)
-        return current.tobytes()
+        return current
 
     def start(self):
         '''
         Start sending and recieving data from the speaker/microphone.
         '''
-        self._running = True
-        if self._devices.microphone is not None:
-            self._microphone_thread = Thread(target=self._microphone_loop, name="Microphone Thread", daemon=True)
-            self._microphone_thread.start()
-        if self._devices.speaker is not None:
-            self._speaker_thread = Thread(target=self._speaker_loop, name="Speaker Thread", daemon=True)
-            self._speaker_thread.start()
+        self._running = TRUE
+        self._microphone_thread = Thread(target=self._microphone_loop, name="Microphone Thread", daemon=True)
+        self._microphone_thread.start()
+        self._speaker_thread = Thread(target=self._speaker_loop, name="Speaker Thread", daemon=True)
+        self._speaker_thread.start()
 
     def stop(self):
         '''

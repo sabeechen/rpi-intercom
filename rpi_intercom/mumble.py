@@ -7,6 +7,10 @@ from pymumble_py3.callbacks import PYMUMBLE_CLBK_SOUNDRECEIVED, PYMUMBLE_CLBK_CO
 from pymumble_py3.errors import UnknownChannelError
 from .config import Config
 from .control import Control
+from .logger import getLogger
+
+
+logger = getLogger(__name__)
 
 # The maximum duration of audio from the microphone we're 
 # allowed to buffer before audio gets dropped 
@@ -34,22 +38,22 @@ class Mumble():
 
 
     def _onConnect(self):
-        print(f"Connected to Mumble server {self._config.server}:{self._config.port} as '{self._config.nickname}'")
+        logger.info(f"Connected to Mumble server {self._config.server}:{self._config.port} as '{self._config.nickname}'")
 
         # If configured to do so, also join a channel after connecting.
         if self._config.channel is not None:
             try:
                 channel: Channel = self._mumble.channels.find_by_name(self._config.channel)
                 channel.move_in()
-                print(f'Joined channel \'{self._config.channel}\'')
+                logger.info(f'Joined channel \'{self._config.channel}\'')
             except UnknownChannelError:
-                print(f"Channel '{self._config.channel}' is unknown")
+                logger.info(f"Channel '{self._config.channel}' is unknown")
         self._connected = True
         self._control._set_connected()
 
     def _onDisconnect(self):
         self._connected = False
-        print("Disconnected from server")
+        logger.warn("Disconnected from mumble server")
         self._control._set_disconnected()
 
     def _onSound(self, user, soundchunk):
@@ -78,7 +82,7 @@ class Mumble():
                         # time by sacraficing some quality when it happens.  It would be better 
                         # to compress and re-sample the audio to catch up.
                         output.clear_buffer()
-                        print(f"Clearing audio send buffer due to latency.  Backlog: {backlog}")
+                        logger.warn(f"Clearing audio send buffer due to latency.  Backlog: {backlog}")
                     self._mumble.sound_output.add_sound(chunk)
             except IndexError:
                 # there wasn't any audio in the trasmit queue.
@@ -87,7 +91,7 @@ class Mumble():
                 if isinstance(e, queue.Empty):
                     # Such pythonic, so clean. wow.
                     continue
-                print(e)
+                logger.printException(e)
 
     def start(self):
         '''

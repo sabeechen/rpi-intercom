@@ -2,6 +2,9 @@ import datetime
 from threading import Lock
 from .circular_buffer import Buffer
 import numpy as np
+from .logger import getLogger
+
+logger = getLogger(__name__)
 
 class Speaker:
     """Represents a speaker, as in a channel of audio from one person on Mumble"""
@@ -25,14 +28,14 @@ class Speaker:
         with self._lock:
             if not self._missed and self._buffer.length > 0:
                 if not self._started_talking:
-                    print(f"{self._name} started talking")
+                    logger.info(f"{self._name} started talking")
                     self._started_talking = True
                 ret = self._buffer.pop(size)
                 if len(ret) < size:
                     ret = np.concatenate((ret, np.zeros(size - len(ret))), axis=None)
                 return ret
             if not self._missed:
-                print(f"{self._name} stopped talking")
+                logger.info(f"{self._name} stopped talking")
             self._missed = True
             self._started_talking = False
             return None

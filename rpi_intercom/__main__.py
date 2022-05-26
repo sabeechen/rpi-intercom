@@ -1,3 +1,4 @@
+import asyncio
 from encodings import utf_8
 import sys
 from .install import InstallService
@@ -14,4 +15,4 @@ if __name__ == '__main__':
     else:
         from .intercom import Intercom
         from .config import Config
-        Intercom(Config.fromArgs()).run()
+        asyncio.run(Intercom(Config.fromArgs()).run())

@@ -148,10 +148,18 @@ class Config:
     @property
     def microphone(self) -> Union[str, int]:
         return self._microphone
+
+    @microphone.setter
+    def set_microphone(self, value:  Union[str, int]):
+        self._microphone = value
         
     @property
     def speaker(self) -> Union[str, int]:
         return self._speaker
+
+    @speaker.setter
+    def set_speaker(self, value:  Union[str, int]):
+        self._speaker = value
 
     @classmethod
     def fromArgs(cls):

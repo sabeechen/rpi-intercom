@@ -59,11 +59,12 @@ class InstallService:
         print(" - Create a user named 'rpi-intercom' with limited permissions to run the intercom service")
         print(" - Install the rpi-intercom service")
         print(" - Configure the service to start at boot")
-        print("Do you want to continue [yes/no]?")
-        response = input()
-        if not response.lower().startswith("y"):
-            print("OK!")
-            raise FailedInstall("Install cancelled by user")
+        if "accept" not in sys.argv:
+            print("Do you want to continue [yes/no]?")
+            response = input()
+            if not response.lower().startswith("y"):
+                print("OK!")
+                raise FailedInstall("Install cancelled by user")
         print()
         user_created = False
         for user in pwd.getpwall():

@@ -9,7 +9,14 @@ from .mumble import Mumble
 from .devices import Devices
 from .echotest import EchoTest
 from .shutdown import Shutdown
+from .server import Server
+import aiorun
+import logging
+from .logger import getLogger
+import sys
+import asyncio
 
+logger = getLogger(__name__)
 
 class Intercom:
     '''
@@ -29,8 +36,8 @@ class Intercom:
         self._control = Control(config)
         self._devices = Devices(self._config, self._shutdown)
         self._mumble = Mumble(self._control, config)
-        #self.mumble = EchoTest()
         self._sound = Sound(self._devices, self._mumble, self._control, config)
+        self._server = Server(self._devices, self._shutdown)
 
     @property
     def controller(self):
@@ -39,8 +46,8 @@ class Intercom:
     def start(self):
         self._shutdown.start()
         self._control.start()
-        self._devices.start()
         self._mumble.start()
+        self._devices.start()
         self._sound.start()
 
     def stop(self):
@@ -49,16 +56,20 @@ class Intercom:
         self._devices.stop()
         self._control.stop()
 
-    def run(self):
+    async def run(self):
         try:
-            print("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
+            logger.info("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
             self.start()
-            signal.signal(signal.SIGQUIT, self._shutdown.shutdown)
-            signal.signal(signal.SIGTERM, self._shutdown.shutdown)
-            self._shutdown.wait_for_shutdown()
+            signal.signal(signal.SIGQUIT, self._do_shutdown)
+            signal.signal(signal.SIGTERM, self._do_shutdown)
+            await self._server.start()
+            await self._shutdown.wait_for_shutdown()
         except KeyboardInterrupt:
-            print("Keyboard interupt")
+            logger.info("Keyboard interupt")
             self._shutdown.shutdown()
         finally:
-            print("Shutting down")
+            logger.info("Shutting down")
             self.stop()
+
+    def _do_shutdown(self, *args, **kwargs):
+        self._shutdown.shutdown()
