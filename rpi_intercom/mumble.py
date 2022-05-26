@@ -149,7 +149,7 @@ class Mumble():
                 logger.info(f"Connecting to mumble server {self._config.server}:{self._config.port}")
                 self._mumble.run()
             except ConnectionRejectedError:
-                logger.error("Invalid mumble server password")
+                logger.error("Mumble server rejected login")
                 # avoid mumble throttling us
                 sleep = 30
             except Exception as e:

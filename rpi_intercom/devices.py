@@ -123,11 +123,22 @@ class Devices():
         self._config.dirty()
         self._worker.trigger()
 
+    def set_speaker(self, speaker):
+        logger.info(f"Setting speaker device to {speaker}")
+        self._config.set_speaker(speaker)
+        self.resetSpeaker()
+
+    def set_microphone(self, microphone):
+        logger.info(f"Setting microphone device to {microphone}")
+        self._config.set_microphone(microphone)
+        self.resetMic()
+
     def _checkLoop(self):
         delay = 5
         try:
-            mic_name, card = self._validateDeviceArgs(self._config.microphone, self._input_pcms)
+            mic_name, card, mic_common_name = self._validateDeviceArgs(self._config.microphone, self._input_pcms)
             if self._microphone is None and mic_name is not None and not self._shutdown.shutting_down:
+                self._choosen_microphone = mic_common_name
                 logger.info(f"Connecting to the microphone:")
                 device = alsa.PCM(
                     type=alsa.PCM_CAPTURE, 
@@ -162,8 +173,9 @@ class Devices():
                 delay = 0
             self._reset_microphone = None
 
-            speaker_name, card = self._validateDeviceArgs(self._config.speaker, self._output_pcms)
+            speaker_name, card, speaker_common_name = self._validateDeviceArgs(self._config.speaker, self._output_pcms)
             if self._speaker is None and speaker_name is not None and not self._shutdown.shutting_down:
+                self._choosen_speaker = speaker_common_name
                 logger.info(f"Connecting to the speaker:")
                 device = alsa.PCM(
                     type=alsa.PCM_PLAYBACK, 
@@ -182,7 +194,9 @@ class Devices():
                 self._speaker = device
                 self._mixer = None
                 try:
-                    self._mixer = alsa.Mixer(control='PCM', device=speaker_name)
+                    control = alsa.mixers(cardindex=card)
+                    if len(control) > 0:
+                        self._mixer = alsa.Mixer(control=control[0], device=speaker_name)
                 except alsa.ALSAAudioError:
                     try:
                         self._mixer = alsa.Mixer(device=speaker_name)
@@ -191,7 +205,7 @@ class Devices():
                 if self._mixer is not None:
                     if self._config.volume is not None:
                         self._mixer.setvolume(self._config.volume)
-                    self._current_volume = self._mixer.getvolume()
+                    self._current_volume = self._mixer.getvolume()[0]
                     logger.info(f"  Volume:       {self._current_volume}")
                     logger.info(f"  Volume Range: {self._mixer.getrange()}")
 
@@ -215,7 +229,7 @@ class Devices():
                     logger.warn("Sound output device has no pcm mixer, sound control is not available")
                 self._set_volume = False
             elif self._mixer is not None:
-                self._current_volume = self._mixer.getvolume()
+                self._current_volume = self._mixer.getvolume()[0]
                 if self._current_volume != self._config.volume and self._config.volume is not None:
                     logger.info(f"Volume was changed to {self._current_volume}%")
                     self._config.volume = self._current_volume
@@ -243,13 +257,13 @@ class Devices():
 
     def _validateDeviceArgs(self, dev_name, list: List[str]):
         if dev_name is None:
-            return None, None
+            return None, None, None
         if dev_name == "":
-            return None, None
+            return None, None, None
         for device in self._devices:
             for name in self._devices[device]:
                 if str(dev_name) == name:
-                    return f"hw:{device}", int(device)
+                    return f"hw:{device}", int(device), self._devices[device][0]
         raise Exception(f"'{dev_name}' does not identify a valid sound device")
 
     def start(self):

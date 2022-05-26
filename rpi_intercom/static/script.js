@@ -122,16 +122,25 @@ class Main {
         while (outputSelect.firstChild) {
             outputSelect.remove(outputSelect.lastChild);
         }
+
+        let devices = []
+        devices.push({'name': "None", 'id': null})
         for (var key in data.devices) {
             let device = data.devices[key];
+            devices.push({'name': "Card " + device[1] + ": " + device[0], 'id': device[0]});
+        }
+        for (let i = 0; i < devices.length; i++) {
+            let device = devices[i];
             let opt = document.createElement("option");
-            opt.value = device[1];
-            opt.innerHTML = "Card " + device[1] + ": " + device[0];
+            opt.selected = data.speaker == device.id
+            opt.value = device.id;
+            opt.innerHTML = device.name;
             inputSelect.appendChild(opt);
 
             opt = document.createElement("option");
-            opt.value = device[1];
-            opt.innerHTML = "Card " + device[1] + ": " + device[0];
+            opt.selected = data.microphone == device.id
+            opt.value = device.id;
+            opt.innerHTML = device.name;
             outputSelect.appendChild(opt);
         }
         let myself = this;
@@ -166,14 +175,14 @@ class Main {
     set_speaker(){
         if (!this.freeze) {
             let device = document.getElementById("output-device");
-            this.conn.send({'type': 'set_speaker', 'speaker': device.selected})
+            this.conn.send({'type': 'set_speaker', 'speaker': device.selectedOptions[0].value})
         }
     }
 
     set_microphone(){
         if (!this.freeze) {
             let device = document.getElementById("input-device");
-            this.conn.send({'type': 'set_speaker', 'speaker': device.selected})
+            this.conn.send({'type': 'set_microphone', 'speaker': device.selectedOptions[0].value})
         }
     }
 }

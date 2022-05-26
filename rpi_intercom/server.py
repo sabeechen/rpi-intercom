@@ -86,6 +86,8 @@ class Server():
             logs.append(item[1])
         return {
             'devices': self._devices._devices,
+            'speaker': self._devices._choosen_speaker,
+            'microphone': self._devices._choosen_microphone,
             'log': logs,
         }
 
@@ -142,3 +144,14 @@ class Server():
                 self._devices.set_volume(self._devices.volume - 5)
             else:
                 self._devices.set_volume(0)
+        elif data_type == "set_speaker":
+            device = message.get("speaker")
+            if device == "null":
+                device = None
+            self._devices.set_speaker(device)
+        elif data_type == "set_microphone":
+            device = message.get("speaker")
+            if device == "null":
+                device = None
+            self._devices.set_microphone(device)
+        
