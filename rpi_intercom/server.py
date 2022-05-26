@@ -14,10 +14,9 @@ from .shutdown import Shutdown
 
 logger = getLogger(__name__)
 class ClientConnection():
-    def __init__(self, ws: web.WebSocketResponse, welcome_message, handler):
+    def __init__(self, ws: web.WebSocketResponse, handler):
         self._closed = Event()
         self._ws = ws
-        self._welcome_message = welcome_message
         self._write_queue = asyncio.Queue()
         self._read_loop_task = asyncio.create_task(self.read_loop())
         self._write_loop_task = asyncio.create_task(self.write_loop())
@@ -25,9 +24,6 @@ class ClientConnection():
         self._handler = handler
 
     async def read_loop(self):
-        await self.queue({'type': 'init', 'data': self._welcome_message})
-        for item in getHistory(0):
-            await self.log(item[1])
         async for msg in self._ws:
             if msg.type == aiohttp.WSMsgType.TEXT:
                 try:
@@ -85,17 +81,20 @@ class Server():
         self._update = asyncio.create_task(self.update_loop())
 
     def welcomeMessage(self):
+        logs = []
+        for item in getHistory(0):
+            logs.append(item[1])
         return {
-            'input_devices': self._devices._input_pcms,
-            'output_devices': self._devices._output_pcms,
-            'devices': self._devices._devices
+            'devices': self._devices._devices,
+            'log': logs,
         }
 
     async def update_loop(self):
         while True:
             update = {
                 'type': 'status',
-                'vad': self._devices.vad
+                'vad': self._devices.vad,
+                'volume': self._devices.volume
             }
             for conn in self._connections:
                 await conn.send(update)
@@ -114,7 +113,8 @@ class Server():
     async def websocket_handler(self, request: web.Request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        conn = ClientConnection(ws, self.welcomeMessage(), self.client_message)
+        conn = ClientConnection(ws, self.client_message)
+        await conn.queue({'type': 'init', 'data': self.welcomeMessage()})
         self._connections.append(conn)
         await conn.closed()
         self._connections.remove(conn)
@@ -132,6 +132,13 @@ class Server():
             logger.info("Resetting sound devices")
             self._devices.resetSpeaker()
             self._devices.resetMic()
-        elif data_type == "volume":
-            # Handle volume control
-            pass
+        elif data_type == "volume_up":
+            if (self._devices.volume):
+                self._devices.set_volume(self._devices.volume + 5)
+            else:
+                self._devices.set_volume(100)
+        elif data_type == "volume_down":
+            if (self._devices.volume):
+                self._devices.set_volume(self._devices.volume - 5)
+            else:
+                self._devices.set_volume(0)

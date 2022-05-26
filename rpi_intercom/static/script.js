@@ -1,27 +1,41 @@
 class Console {
     constructor() {
-        this.element = document.getElementById("log");
+        this.logBox = document.getElementById("log");
         this.vad = document.getElementById("vad");
+        this.volume = document.getElementById("volume");
     }
 
     log(message) {
         let div = document.createElement("div");
         div.textContent = message;
         div.classList.add("log-line");
-        this.element.append(div);
-        this.element.scrollTop =  this.element.scrollHeight;
+        this.logBox.append(div);
+        this.logBox.scrollTop =  this.logBox.scrollHeight;
+        
+        if(this.logBox.children.length > 400) {
+            this.logBox.removeChild(this.logBox.firstElementChild)
+        }
     }
 
     log_control(message) {
         let div = document.createElement("div");
         div.textContent = message;
         div.classList.add("control-message");
-        this.element.append(div);
-        this.element.scrollTop =  this.element.scrollHeight;
+        this.logBox.append(div);
+
+        this.logBox.scrollTop =  this.logBox.scrollHeight;
     }
 
     update_vad(vad) {
         this.vad.innerText = vad;
+    }
+
+    update_volume(volume) {
+        if (volume != null){
+            this.volume.innerText = volume + "%";
+        } else {
+            this.volume.innerText = "?";
+        }
     }
 }
 
@@ -80,6 +94,7 @@ class Main {
         this.url = "ws://" + location.host + "/ws";
         this.log = new Console();
         this.conn = new Connection(this, this.log);
+        this.freeze = false;
     }
 
     onMessage(event) {
@@ -90,6 +105,7 @@ class Main {
             this.initialize(data.data);
         } else if (data.type == "status") {
             this.log.update_vad(data.vad);
+            this.log.update_volume(data.volume);
         } else {
             console.log("Unknown message: " + event.data);
         }
@@ -97,6 +113,7 @@ class Main {
     }
 
     initialize(data) {
+        this.freeze = true;
         let inputSelect = document.getElementById("input-device");
         let outputSelect = document.getElementById("output-device");
         while (inputSelect.firstChild) {
@@ -120,6 +137,14 @@ class Main {
         let myself = this;
         document.getElementById("reset-button").onclick = function() { myself.reset()};
         document.getElementById("shutdown-button").onclick = function() { myself.shutdown()};
+        document.getElementById("volume-up").onclick = function() { myself.volume_up()};
+        document.getElementById("volume-down").onclick = function() { myself.volume_down()};
+        inputSelect.onchange = function() { myself.set_microphone()};
+        outputSelect.onchange = function() { myself.set_speaker()};
+        for (let i = 0 ; i < data.log.length; i++) {
+            this.log.log(data.log[i]);
+        }
+        this.freeze = false;
     }
 
     reset(){
@@ -128,6 +153,28 @@ class Main {
 
     shutdown(){
         this.conn.send({'type': 'shutdown'})
+    }
+
+    volume_up(){
+        this.conn.send({'type': 'volume_up'})
+    }
+
+    volume_down(){
+        this.conn.send({'type': 'volume_down'})
+    }
+
+    set_speaker(){
+        if (!this.freeze) {
+            let device = document.getElementById("output-device");
+            this.conn.send({'type': 'set_speaker', 'speaker': device.selected})
+        }
+    }
+
+    set_microphone(){
+        if (!this.freeze) {
+            let device = document.getElementById("input-device");
+            this.conn.send({'type': 'set_speaker', 'speaker': device.selected})
+        }
     }
 }
 

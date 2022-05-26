@@ -103,7 +103,7 @@ class InstallService:
         print("  service rpi-intercom start")
         print("  service rpi-intercom restart")
 
-    def _run_process(self, args) -> subprocess.CompletedProcess[str]:
+    def _run_process(self, args):
         info = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if info.returncode != 0:
             message = f"Command: \"{' '.join(args)}\" returned status code {info.returncode}.  Here is the output in case that helps:\n"

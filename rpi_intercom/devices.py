@@ -44,6 +44,8 @@ class Devices():
         self._microphone_resampler = None
         self._microphone_sample_rate = None
         self._microphone_channels = None
+        self._choosen_speaker = None
+        self._choosen_microphone = None
         self._speaker_resampler = None
         self._speaker_sample_rate = None
         self._speaker_channels = None
@@ -53,6 +55,8 @@ class Devices():
         self._vad_last_activated = datetime.now()
         self._vad_active = False
         self._vad_queue = collections.deque(maxlen=10)
+        self._set_volume = False
+        self._current_volume = 0
 
         # determine chunk size
         self._chunk_size = int(math.pow(2, int(math.log2(self._config.chunk_size))))
@@ -107,6 +111,16 @@ class Devices():
 
     def resetSpeaker(self):
         self._reset_speaker = True
+        self._worker.trigger()
+
+    def set_volume(self, level: int):
+        if level < 0:
+            level = 0
+        if level > 100:
+            level = 100
+        self._config.set_volume(level)
+        self._set_volume = True
+        self._config.dirty()
         self._worker.trigger()
 
     def _checkLoop(self):
@@ -175,20 +189,43 @@ class Devices():
                     except alsa.ALSAAudioError:
                         logger.warning("Unable to find a mixer device for this speaker.  Volume control will be unavailable.")
                 if self._mixer is not None:
-                    self._mixer.setvolume(50)
-                    logger.info(f"  Volume:       {self._mixer.getvolume()}")
+                    if self._config.volume is not None:
+                        self._mixer.setvolume(self._config.volume)
+                    self._current_volume = self._mixer.getvolume()
+                    logger.info(f"  Volume:       {self._current_volume}")
                     logger.info(f"  Volume Range: {self._mixer.getrange()}")
 
             elif self._reset_speaker and self._speaker is not None:
                 logger.info(f"Closing speaker {self._speaker.cardname()}")
                 dev = self._speaker
                 self._speaker = None
+                self._mixer = None
+                self._current_volume = None
                 self._close(dev)
                 logger.info("Closed speaker")
                 delay = 0 
             self._reset_speaker = False
+
+            if self._set_volume and self._config.volume is not None:
+                if self._mixer is not None:
+                    self._mixer.setvolume(self._config.volume)
+                    self._current_volume = self._config.volume
+                    logger.info(f"Set volume to {self._config.volume}%")
+                else:
+                    logger.warn("Sound output device has no pcm mixer, sound control is not available")
+                self._set_volume = False
+            elif self._mixer is not None:
+                self._current_volume = self._mixer.getvolume()
+                if self._current_volume != self._config.volume and self._config.volume is not None:
+                    logger.info(f"Volume was changed to {self._current_volume}%")
+                    self._config.volume = self._current_volume
+                    self._config.dirty()
         finally:
             self._worker.submit(delay, self._checkLoop)
+
+    @property
+    def volume(self):
+        return self._current_volume
 
     def _close(self, device):
         if device is None:
@@ -206,7 +243,9 @@ class Devices():
 
     def _validateDeviceArgs(self, dev_name, list: List[str]):
         if dev_name is None:
-            return None
+            return None, None
+        if dev_name == "":
+            return None, None
         for device in self._devices:
             for name in self._devices[device]:
                 if str(dev_name) == name:

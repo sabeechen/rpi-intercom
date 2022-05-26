@@ -35,7 +35,7 @@ class Intercom:
         self._wait_forever = Event()
         self._control = Control(config)
         self._devices = Devices(self._config, self._shutdown)
-        self._mumble = Mumble(self._control, config)
+        self._mumble = Mumble(self._control, config, self._shutdown)
         self._sound = Sound(self._devices, self._mumble, self._control, config)
         self._server = Server(self._devices, self._shutdown)
 
