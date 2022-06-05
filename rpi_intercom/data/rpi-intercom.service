@@ -7,7 +7,7 @@ After = multi-user.target
 User = rpi-intercom
 Group = rpi-intercom
 Type = simple
-ExecStart = python -u -m rpi-intercom --config {config_path}
+ExecStart = python -u -m rpi_intercom --config {config_path}
 Restart = always
 RestartSec = 5
 

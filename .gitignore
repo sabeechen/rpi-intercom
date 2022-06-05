@@ -1,0 +1,4 @@
+rpi_intercom/__pycache__/*
+rpi_intercom.egg-info/
+dist/
+tests/__pycache__/

@@ -1,0 +1,9 @@
+server: media.home
+nickname: test-intercom
+channel: testing
+speaker: eMeet M0
+microphone: eMeet M0
+tokens:
+  - excellent_password
+
+

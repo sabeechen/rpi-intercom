@@ -1,11 +1,22 @@
 import signal, os
+import pkg_resources
 from threading import Event
+from time import sleep
 from .control import Control
 from .config import Config
 from .sound  import Sound
 from .mumble import Mumble
+from .devices import Devices
 from .echotest import EchoTest
+from .shutdown import Shutdown
+from .server import Server
+import aiorun
+import logging
+from .logger import getLogger
+import sys
+import asyncio
 
+logger = getLogger(__name__)
 
 class Intercom:
     '''
@@ -19,38 +30,46 @@ class Intercom:
     to start/stop playback, mute, or defen.
     '''
     def __init__(self, config: Config):
+        self._shutdown = Shutdown(config)
         self._config = config
         self._wait_forever = Event()
         self._control = Control(config)
-        self._mumble = Mumble(self._control, config)
-        #self.mumble = EchoTest()
-        self._sound = Sound(self._mumble, self._control, config)
+        self._devices = Devices(self._config, self._shutdown)
+        self._mumble = Mumble(self._control, config, self._shutdown)
+        self._sound = Sound(self._devices, self._mumble, self._control, config)
+        self._server = Server(self._devices, self._shutdown)
 
     @property
     def controller(self):
         return self._control
 
     def start(self):
+        self._shutdown.start()
         self._control.start()
         self._mumble.start()
+        self._devices.start()
         self._sound.start()
 
     def stop(self):
         self._mumble.stop()
         self._sound.stop()
+        self._devices.stop()
         self._control.stop()
 
-    def run(self):
+    async def run(self):
         try:
+            logger.info("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
             self.start()
-            signal.signal(signal.SIGQUIT, self._signal_handler)
-            signal.signal(signal.SIGTERM, self._signal_handler)
-            self._wait_forever.wait()
+            signal.signal(signal.SIGQUIT, self._do_shutdown)
+            signal.signal(signal.SIGTERM, self._do_shutdown)
+            await self._server.start()
+            await self._shutdown.wait_for_shutdown()
         except KeyboardInterrupt:
-            pass
+            logger.info("Keyboard interupt")
+            self._shutdown.shutdown()
         finally:
-            print("Shutting down")
+            logger.info("Shutting down")
             self.stop()
 
-    def _signal_handler(self, signum, frame):
-        self._wait_forever.set()
+    def _do_shutdown(self, *args, **kwargs):
+        self._shutdown.shutdown()

@@ -1,7 +1,9 @@
 from typing import List
 from .config import Config, PinConfig
 from gpiozero import Button, LED, GPIODevice
+from .logger import getLogger
 
+logger = getLogger(__name__)
 DEBOUNCE_SECONDS = None
 
 class Control:
@@ -122,12 +124,12 @@ class Control:
     @transmitting.setter
     def transmitting(self, value: bool):
         if not self.transmitting and value:
-            print("Started transmitting")
+            logger.info("Started transmitting")
             self._transmitting = True
             for led in self._transmitting_controls:
                 led.on()
         elif self.transmitting and not value:
-            print("Stopped transmitting")
+            logger.info("Stopped transmitting")
             self._transmitting = False
             for led in self._transmitting_controls:
                 led.off()
@@ -142,12 +144,12 @@ class Control:
     @deafened.setter
     def deafened(self, value: bool):
         if not self._deafened and value:
-            print("Started deafening")
+            logger.info("Started deafening")
             self._deafened = True
             for led in self._deafened_controls:
                 led.on()
         elif self._deafened and not value:
-            print("Stopped deafening")
+            logger.info("Stopped deafening")
             self._deafened = False
             for led in self._deafened_controls:
                 led.off()

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="/static/script.js"></script>
+    <style>
+        body {
+            font-family: monospace, monospace;
+        }
+        .log-line {
+            font-family: monospace, monospace;
+            white-space: pre;
+        }
+        .control-message {
+            white-space: pre;
+            font-style: italic;
+            padding: 10px;
+        }
+        .log-box {
+            overflow-x:auto;
+            overflow-y:auto;
+            background-color: black;
+            color: white;
+            height: 500px;
+            padding: 10px;
+        }
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <pre>Speaker:    </pre><select id="output-device"></select><br>
+    <pre>Microphone: </pre><select id="input-device"></select><br>
+    <div>
+        VAD: <span id="vad"></span>%  Volume: <span id="volume"></span><button id="volume-up">+</button><button id="volume-down">-</button>
+    </div>
+    <div>
+        <button id="reset-button">Reset Sound Devices</button>
+    </div>
+    <div>
+        <button id="shutdown-button">Shutdown</button>
+    </div>
+    <div id="log" class="log-box">
+    </div>
+</body>
+</html>

@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
+from typing import Any, Dict, List, Union
 from numpy import fromfile
 from schema import Schema, Optional, Or
 import yaml
 import sys
 import uuid
 import argparse
-
 
 class Options(Enum):
     SERVER = "server"
@@ -20,6 +19,11 @@ class Options(Enum):
     SEND_BUFFER_LATENCY = "send_buffer_latency"
     CHANNEL = "channel"
     PINS = "pins"
+    RESTART_SECONDS = "restart_seconds"
+    CHUNK_SIZE = "chunk_size"
+    SPEAKER = "speaker"
+    MICROPHONE = "microphone"
+    VOLUME = "volume"
 
 class PinConfig(Enum):
     ACTION_TOOGLE_TRANSMIT = "toggle_transmit"
@@ -47,9 +51,15 @@ CONFIG_SCHEMA = Schema({
     Optional(Options.CHANNEL.value): str,
     Optional(Options.SEND_BUFFER_LATENCY.value): float,
     Optional(Options.PINS.value): {str: PIN_SCHEMA},
+    Optional(Options.RESTART_SECONDS.value): int,
+    Optional(Options.CHUNK_SIZE.value): int,
+    Optional(Options.SPEAKER.value): Or(int, str),
+    Optional(Options.MICROPHONE.value): Or(int, str),
+    Optional(Options.VOLUME.value): int,
 })
 
 DEFAULTS = {
+    Options.SERVER: "unused",
     Options.NICKNAME: "intercom_" + hex(uuid.getnode())[-4:],
     Options.PORT: 64738,
     Options.PASSWORD: "",
@@ -59,11 +69,16 @@ DEFAULTS = {
     Options.SEND_BUFFER_LATENCY: 0.5,
     Options.TOKENS: [],
     Options.PINS: {},
+    Options.RESTART_SECONDS: 0,
+    Options.CHUNK_SIZE: 512,
+    Options.SPEAKER: "default",
+    Options.MICROPHONE: "default",
+    Options.VOLUME: None,
 }
 
 
 class Config:
-    def __init__(self, server: str = None, port: int = None, nickname: str = None, password:str = None, cert_file: str = None, key_file: str = None, channel: str = None, send_buffer_latency:float = None, tokens: List[str] = None, pins: Dict[str, PinConfig] = None):
+    def __init__(self, server: str = None, port: int = None, nickname: str = None, password:str = None, cert_file: str = None, key_file: str = None, channel: str = None, send_buffer_latency:float = None, tokens: List[str] = None, pins: Dict[str, PinConfig] = None, restart_seconds:int=None, chunk_size: int=None, speaker:Union[str, int]=None, microphone:Union[str, int]=None, volume:int=None):
         self._server = server if server is not None else DEFAULTS[Options.SERVER]
         self._port = port if port is not None else DEFAULTS[Options.PORT]
         self._nickname = nickname if nickname is not None else DEFAULTS[Options.NICKNAME]
@@ -74,6 +89,15 @@ class Config:
         self._send_buffer_latency = send_buffer_latency if send_buffer_latency is not None else DEFAULTS[Options.SEND_BUFFER_LATENCY]
         self._tokens = tokens if tokens is not None else DEFAULTS[Options.TOKENS]
         self._pins = pins if pins is not None else DEFAULTS[Options.PINS]
+        self._restart_seconds = restart_seconds if restart_seconds is not None else DEFAULTS[Options.RESTART_SECONDS]
+        self._chunk_size = chunk_size if chunk_size is not None else DEFAULTS[Options.CHUNK_SIZE]
+        self._microphone = microphone if microphone is not None else DEFAULTS[Options.MICROPHONE]
+        self._speaker = speaker if speaker is not None else DEFAULTS[Options.SPEAKER]
+        self._volume = volume if volume is not None else DEFAULTS[Options.VOLUME]
+
+    def dirty(self):
+        # TODO: save the config back
+        pass
 
     @classmethod
     def fromFile(cls, path):
@@ -121,11 +145,40 @@ class Config:
     def pins(self):
         return self._pins
 
+    @property
+    def restart_seconds(self) -> int:
+        return self._restart_seconds
+
+    @property
+    def chunk_size(self) -> int:
+        return self._chunk_size
+
+    @property
+    def microphone(self) -> Union[str, int]:
+        return self._microphone
+
+    def set_microphone(self, value:  Union[str, int]):
+        self._microphone = value
+        
+    @property
+    def speaker(self) -> Union[str, int]:
+        return self._speaker
+
+    def set_speaker(self, value:  Union[str, int]):
+        self._speaker = value
+
+    @property
+    def volume(self) -> int:
+        return self._volume
+
+    def set_volume(self, value: int):
+        self._volume = value
+
     @classmethod
     def fromArgs(cls):
         parser = argparse.ArgumentParser()
         parser.add_argument("--config", required=False,
-                            help="The config file to laod optiosn from.  All other aguments are ignored when thsi is specified", default=None)
+                            help="The config file to load options from.  All other aguments are ignored when thsi is specified", default=None)
         parser.add_argument("--server", required=False,
                             help="The address of the mumble server", default=None)
         parser.add_argument("--port", required=False,
@@ -144,7 +197,16 @@ class Config:
                             help="How long to let audio sit in the send buffer before dropping it", default=None)
         parser.add_argument("--tokens", required=False, nargs="*",
                             help="One or more access tokens to be passed to the server", default=None)
-
+        parser.add_argument("--restart_seconds", required=False, nargs="*",
+                            help="If set, how often the client should restart istelf in seconds.", default=None)
+        parser.add_argument("--speaker", required=False, nargs="*",
+                            help="The speaker device to use for sound output.  Can be either the ALSA device name (a string) or a device index (an integer)", default=None)
+        parser.add_argument("--microphone", required=False, nargs="*",
+                            help="The microphone device to use for sound input.  Can be either the ALSA device name (a string) or a device index (an integer)", default=None)
+        parser.add_argument("--chunk_size", required=False, nargs="*",
+                            help="Size of the chunk in bytes that speaker or microphone output/input is processed.  Must be a power of 2.", default=None)
+        parser.add_argument("--volume", required=False,
+                            help="The initial volume, from 0 to 100, to set the speaker to.", default=None)
         args = parser.parse_args()
 
         if args.config is not None:
@@ -160,7 +222,12 @@ class Config:
                             channel=config.get(Options.CHANNEL.value),
                             send_buffer_latency=config.get(Options.SEND_BUFFER_LATENCY.value),
                             pins=config.get(Options.PINS.value), 
-                            tokens=config.get(Options.TOKENS.value))
+                            tokens=config.get(Options.TOKENS.value),
+                            restart_seconds=config.get(Options.RESTART_SECONDS.value),
+                            chunk_size=config.get(Options.CHUNK_SIZE.value),
+                            microphone=config.get(Options.MICROPHONE.value),
+                            speaker=config.get(Options.SPEAKER.value),
+                            volume=config.get(Options.VOLUME.value))
         else:
             return Config(server=args.server, 
                 port=args.port, 
@@ -170,7 +237,12 @@ class Config:
                 key_file=args.key_file, 
                 channel=args.channel, 
                 send_buffer_latency=args.send_buffer_latency,
-                tokens=args.tokens)
+                tokens=args.tokens,
+                restart_seconds=args.restart_seconds,
+                chunk_size=args.chunk_size,
+                microphone=args.microphone,
+                speaker=args.speaker,
+                volume=args.volume)
 
     def get(self, key):
         if key in self.data:
