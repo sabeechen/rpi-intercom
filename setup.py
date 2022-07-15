@@ -14,7 +14,7 @@ setup(
     package_data = {
         'rpi_intercom': ['static/*']
     },
-    version='0.0.18',
+    version='0.0.19',
     description='Intercom library for a raspberrypi',
     long_description=long_description,
     long_description_content_type="text/markdown",
