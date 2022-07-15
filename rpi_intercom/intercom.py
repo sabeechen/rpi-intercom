@@ -58,7 +58,10 @@ class Intercom:
 
     async def run(self):
         try:
-            logger.info("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
+            try:
+                logger.info("Starting up rpi_intercom v" + pkg_resources.get_distribution("rpi_intercom").version)
+            except Exception:
+                pass
             self.start()
             signal.signal(signal.SIGQUIT, self._do_shutdown)
             signal.signal(signal.SIGTERM, self._do_shutdown)

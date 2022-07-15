@@ -197,13 +197,13 @@ class Config:
                             help="How long to let audio sit in the send buffer before dropping it", default=None)
         parser.add_argument("--tokens", required=False, nargs="*",
                             help="One or more access tokens to be passed to the server", default=None)
-        parser.add_argument("--restart_seconds", required=False, nargs="*",
+        parser.add_argument("--restart_seconds", required=False,
                             help="If set, how often the client should restart istelf in seconds.", default=None)
-        parser.add_argument("--speaker", required=False, nargs="*",
+        parser.add_argument("--speaker", required=False,
                             help="The speaker device to use for sound output.  Can be either the ALSA device name (a string) or a device index (an integer)", default=None)
-        parser.add_argument("--microphone", required=False, nargs="*",
+        parser.add_argument("--microphone", required=False,
                             help="The microphone device to use for sound input.  Can be either the ALSA device name (a string) or a device index (an integer)", default=None)
-        parser.add_argument("--chunk_size", required=False, nargs="*",
+        parser.add_argument("--chunk_size", required=False,
                             help="Size of the chunk in bytes that speaker or microphone output/input is processed.  Must be a power of 2.", default=None)
         parser.add_argument("--volume", required=False,
                             help="The initial volume, from 0 to 100, to set the speaker to.", default=None)
